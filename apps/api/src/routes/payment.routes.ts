@@ -16,3 +16,4 @@ router.post('/khalti/verify', requireAuth, PaymentController.verifyKhalti);
 router.post('/cash/confirm', requireAuth, PaymentController.confirmCashPayment);
 
 export default router;
+

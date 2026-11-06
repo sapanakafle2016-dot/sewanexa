@@ -82,3 +82,4 @@ export const initSocketIO = (httpServer: HttpServer, allowedOrigin: string): Soc
 export const getSocketIO = (): SocketIOServer | null => {
   return io;
 };
+

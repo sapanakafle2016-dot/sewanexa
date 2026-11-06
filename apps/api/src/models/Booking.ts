@@ -165,3 +165,4 @@ const bookingSchema = new Schema<IBookingDocument>(
 bookingSchema.index({ jobLocation: '2dsphere' });
 
 export const Booking = mongoose.model<IBookingDocument>('Booking', bookingSchema);
+

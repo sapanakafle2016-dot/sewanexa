@@ -91,14 +91,19 @@ npm run seed --workspace=apps/api
 ```
 
 ### 5. Run Development Servers
-- Run Backend API (Port 5000):
+- **Run Backend API (Port 5000):**
   ```bash
   npm run dev:api
   ```
-- Run Next.js Web Frontend (Port 3000):
+- **Run Next.js Web Frontend (Port 3000):**
   ```bash
   npm run dev:web
   ```
+- **Run Mobile Application (Expo - Android & iOS):**
+  ```bash
+  npm run dev:mobile
+  ```
+  *Press `a` in the Expo console to open on Android Emulator, `i` for iOS Simulator, or scan the QR code with the Expo Go app on your physical device.*
 
 ---
 
@@ -142,3 +147,4 @@ npm run seed --workspace=apps/api
 Lokanthali, Bhaktapur, Nepal  
 Email: [sangalotech@gmail.com](mailto:sangalotech@gmail.com)  
 Website: [www.sangalotech.com](http://www.sangalotech.com)
+

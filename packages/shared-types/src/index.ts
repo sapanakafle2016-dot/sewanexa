@@ -256,3 +256,4 @@ export enum SocketEvents {
   JOB_STATUS_CHANGE = 'job_status_change',
   NOTIFICATION = 'notification',
 }
+

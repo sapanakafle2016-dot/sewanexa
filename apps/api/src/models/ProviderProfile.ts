@@ -165,3 +165,4 @@ export const ProviderProfile = mongoose.model<IProviderProfileDocument>(
   'ProviderProfile',
   providerProfileSchema
 );
+

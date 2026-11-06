@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "SEWANEXA",
+    "slug": "sewanexa",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1e6fe8"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sangalotech.sewanexa",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "SEWANEXA uses your location to discover and connect you with nearby service providers in Nepal."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1e6fe8"
+      },
+      "package": "com.sangalotech.sewanexa",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow SEWANEXA to use your location to connect with local service providers in your neighborhood."
+        }
+      ]
+    ]
+  }
+}
+

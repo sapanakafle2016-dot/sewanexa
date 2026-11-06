@@ -104,3 +104,4 @@ export const khaltiInitiateSchema = z.object({
   bookingId: z.string().min(1),
   amount: z.number().positive(),
 });
+

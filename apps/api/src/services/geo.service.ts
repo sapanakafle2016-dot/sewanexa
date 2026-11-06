@@ -108,3 +108,4 @@ export class GeoService {
     return await ProviderProfile.aggregate(pipeline);
   }
 }
+

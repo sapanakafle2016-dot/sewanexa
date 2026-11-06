@@ -10,3 +10,4 @@ router.patch('/:id/status', requireAuth, BookingController.updateStatus);
 router.post('/review', requireAuth, BookingController.addReview);
 
 export default router;
+

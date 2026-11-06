@@ -16,3 +16,4 @@ router.put('/toggle-online', requireAuth, requireProvider, ProviderController.to
 router.put('/update-location', requireAuth, requireProvider, ProviderController.updateLocation);
 
 export default router;
+

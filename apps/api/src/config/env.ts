@@ -28,3 +28,4 @@ export const config = {
     sparrowFrom: process.env.SPARROW_SMS_FROM || 'Sewanexa',
   },
 };
+

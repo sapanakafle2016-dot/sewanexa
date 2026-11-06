@@ -65,3 +65,4 @@ export const SubCategory = mongoose.model<ISubCategoryDocument>(
   'SubCategory',
   subCategorySchema
 );
+

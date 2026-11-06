@@ -62,3 +62,4 @@ export const WalletTransaction = mongoose.model<IWalletTransactionDocument>(
   'WalletTransaction',
   walletTransactionSchema
 );
+

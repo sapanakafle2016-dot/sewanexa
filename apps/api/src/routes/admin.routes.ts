@@ -13,3 +13,4 @@ router.post('/providers/:providerId/review', AdminController.reviewProviderVerif
 router.get('/bookings', AdminController.listAllBookings);
 
 export default router;
+
