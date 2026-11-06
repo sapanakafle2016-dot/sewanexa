@@ -1,0 +1,28 @@
+{
+  "name": "sewanexa",
+  "version": "1.0.0",
+  "description": "SEWANEXA – Local Services Marketplace for Nepal",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev:api",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "keywords": [
+    "nepal",
+    "local-services",
+    "marketplace",
+    "esewa",
+    "khalti",
+    "geospatial"
+  ],
+  "author": "Sangalo Tech Pvt. Ltd.",
+  "license": "ISC"
+}
