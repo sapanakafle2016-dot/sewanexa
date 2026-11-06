@@ -2,3 +2,5 @@ npm run dev:api
 npm run dev:web
 npm run dev:mobile
 npm run seed --workspace=apps/api
+
+npm run dev:mobile
