@@ -200,7 +200,7 @@ export const HomeScreen = ({ navigation }: any) => {
         {/* Categories Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Service Categories</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('CategoriesList')}>
+          <TouchableOpacity onPress={() => {}}>
             <Text style={styles.seeAllText}>View All</Text>
           </TouchableOpacity>
         </View>
