@@ -40,11 +40,18 @@ export class GeoService {
       matchConditions.baseRate = { $lte: Number(maxPrice) };
     }
 
-    if (searchQuery) {
+    if (searchQuery && searchQuery.trim()) {
+      const term = searchQuery.trim();
+      const stem = term.replace(/(er|ers|ing|ian|ians|ist|ists)$/i, '');
+      const patterns = [new RegExp(term, 'i')];
+      if (stem.length >= 3 && stem.toLowerCase() !== term.toLowerCase()) {
+        patterns.push(new RegExp(stem, 'i'));
+      }
+
       matchConditions.$or = [
-        { bio: { $regex: searchQuery, $options: 'i' } },
-        { skills: { $in: [new RegExp(searchQuery, 'i')] } },
-        { businessName: { $regex: searchQuery, $options: 'i' } },
+        { bio: { $regex: term, $options: 'i' } },
+        { skills: { $in: patterns } },
+        { businessName: { $regex: term, $options: 'i' } },
       ];
     }
 

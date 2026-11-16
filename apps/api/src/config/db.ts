@@ -1,14 +1,19 @@
 import mongoose from 'mongoose';
 import { config } from './env.js';
 
+let isConnected = false;
+
 export const connectDB = async (): Promise<void> => {
+  if (isConnected || mongoose.connection.readyState >= 1) {
+    return;
+  }
   try {
     const conn = await mongoose.connect(config.mongoUri);
+    isConnected = true;
     console.log(`[Database] MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error('[Database] MongoDB connection error:', error);
-    // Don't kill process immediately in dev so app can start with warnings
-    if (config.nodeEnv === 'production') {
+    if (config.nodeEnv === 'production' && !process.env.VERCEL) {
       process.exit(1);
     }
   }

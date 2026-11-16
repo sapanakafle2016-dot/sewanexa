@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const config = {
-  port: parseInt(process.env.PORT || '5000', 10),
+  port: parseInt(process.env.PORT || '5001', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
   mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/sewanexa',
@@ -22,10 +22,18 @@ export const config = {
     gatewayUrl: process.env.KHALTI_GATEWAY_URL || 'https://a.khalti.com/api/v2/epayment',
   },
   commissionPercentage: parseFloat(process.env.DEFAULT_COMMISSION_PERCENTAGE || '10'),
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID || '',
+  },
   sms: {
     provider: process.env.SMS_GATEWAY_PROVIDER || 'mock',
     sparrowToken: process.env.SPARROW_SMS_TOKEN || '',
     sparrowFrom: process.env.SPARROW_SMS_FROM || 'Sewanexa',
+  },
+  firebase: {
+    projectId: process.env.FIREBASE_PROJECT_ID || '',
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL || '',
+    privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
   },
 };
 

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { IUser, IProviderProfile } from '@sewanexa/shared-types';
+import type { IUser, IProviderProfile } from '@sewanexa/shared-types';
 import {
   mobileApiFetch,
   getStoredToken,
@@ -7,7 +7,7 @@ import {
   removeStoredToken,
 } from '../services/api';
 
-interface MobileAuthContextType {
+export interface MobileAuthContextType {
   user: IUser | null;
   providerProfile: IProviderProfile | null;
   isProvider: boolean;
@@ -15,12 +15,13 @@ interface MobileAuthContextType {
   isLoading: boolean;
   sendOtp: (phoneNumber: string) => Promise<{ success: boolean; devOtp?: string; message: string }>;
   verifyOtp: (phoneNumber: string, otp: string) => Promise<void>;
+  loginWithGoogle: (payload: { email?: string; name?: string; avatarUrl?: string; googleId?: string; idToken?: string }) => Promise<void>;
   switchMode: (mode: 'customer' | 'provider') => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
-const AuthContext = createContext<MobileAuthContextType | undefined>(undefined);
+export const AuthContext = createContext<MobileAuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<IUser | null>(null);
@@ -29,31 +30,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activeMode, setActiveMode] = useState<'customer' | 'provider'>('customer');
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const refreshUser = async () => {
-    const token = await getStoredToken();
-    if (!token) {
-      setUser(null);
-      setProviderProfile(null);
-      setIsProvider(false);
-      setIsLoading(false);
-      return;
-    }
-
+  const refreshUser = async (): Promise<void> => {
     try {
+      let token: string | null = null;
+      try {
+        token = await getStoredToken();
+      } catch (storageErr) {
+        console.warn('Storage read error:', storageErr);
+      }
+
+      if (!token) {
+        setUser(null);
+        setProviderProfile(null);
+        setIsProvider(false);
+        setIsLoading(false);
+        return;
+      }
+
       const res = await mobileApiFetch('/auth/me');
-      if (res.success) {
+      if (res && res.success && res.user) {
         setUser(res.user);
-        setIsProvider(res.isProvider);
-        setProviderProfile(res.providerProfile);
+        setIsProvider(Boolean(res.isProvider));
+        setProviderProfile(res.providerProfile || null);
         if (res.isProvider && activeMode === 'provider') {
           setActiveMode('provider');
         } else {
           setActiveMode('customer');
         }
+      } else {
+        try {
+          await removeStoredToken();
+        } catch {}
+        setUser(null);
+        setProviderProfile(null);
+        setIsProvider(false);
       }
     } catch (err) {
-      console.warn('Failed to refresh user:', err);
-      await removeStoredToken();
+      // Graceful offline/guest fallback - never throw unhandled promise rejection
+      console.warn('User session check skipped (offline / guest mode):', err);
+      try {
+        await removeStoredToken();
+      } catch {}
       setUser(null);
       setProviderProfile(null);
       setIsProvider(false);
@@ -63,7 +80,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    refreshUser();
+    let isMounted = true;
+    const initAuth = async () => {
+      try {
+        await refreshUser();
+      } catch (err) {
+        console.warn('initAuth caught:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    initAuth();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const sendOtp = async (phoneNumber: string) => {
@@ -81,11 +113,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       requiresAuth: false,
     });
 
-    if (res.token) {
-      await setStoredToken(res.token);
-      setUser(res.user);
-      setIsProvider(res.isProvider);
-      setProviderProfile(res.providerProfile);
+    if (res && res.token) {
+      try {
+        await setStoredToken(res.token);
+      } catch {}
+      setUser(res.user || null);
+      setIsProvider(Boolean(res.isProvider));
+      setProviderProfile(res.providerProfile || null);
+      setActiveMode(res.isProvider ? 'provider' : 'customer');
+    }
+  };
+
+  const loginWithGoogle = async (payload: { email?: string; name?: string; avatarUrl?: string; googleId?: string; idToken?: string }) => {
+    const res = await mobileApiFetch('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      requiresAuth: false,
+    });
+
+    if (res && res.token) {
+      try {
+        await setStoredToken(res.token);
+      } catch {}
+      setUser(res.user || null);
+      setIsProvider(Boolean(res.isProvider));
+      setProviderProfile(res.providerProfile || null);
       setActiveMode(res.isProvider ? 'provider' : 'customer');
     }
   };
@@ -95,7 +147,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    await removeStoredToken();
+    try {
+      await removeStoredToken();
+    } catch {
+      // Ignore storage clear errors on logout
+    }
     setUser(null);
     setProviderProfile(null);
     setIsProvider(false);
@@ -112,6 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         sendOtp,
         verifyOtp,
+        loginWithGoogle,
         switchMode,
         logout,
         refreshUser,
@@ -130,3 +187,4 @@ export const useAuth = () => {
   return context;
 };
 
+export default AuthContext;

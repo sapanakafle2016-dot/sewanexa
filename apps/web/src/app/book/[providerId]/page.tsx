@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   MapPin,
@@ -11,6 +11,8 @@ import {
   Clock,
   ArrowRight,
   RefreshCw,
+  Lock,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/api';
@@ -18,8 +20,14 @@ import { apiFetch } from '@/lib/api';
 export default function BookProviderPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const providerId = params?.providerId as string;
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace(`/login?redirect=${encodeURIComponent(`/book/${providerId}`)}`);
+    }
+  }, [user, isLoading, router, providerId]);
 
   const [address, setAddress] = useState('Lokanthali, Bhaktapur, Bagmati Province');
   const [scheduledTime, setScheduledTime] = useState('Today (Within 2 Hours)');
@@ -121,6 +129,21 @@ export default function BookProviderPage() {
       setLoading(false);
     }
   };
+
+  if (isLoading || !user) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-14 h-14 bg-[#ede8f7] text-[#331e6a] rounded-2xl flex items-center justify-center mb-4 shadow-sm">
+          <Lock className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black text-slate-800 mb-2">Login Required to Book Service</h2>
+        <p className="text-xs text-slate-500 max-w-sm mb-6">
+          Redirecting to authentication portal so you can confirm and track your booking...
+        </p>
+        <Loader2 className="w-6 h-6 animate-spin text-[#331e6a]" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

@@ -2,5 +2,17 @@ npm run dev:api
 npm run dev:web
 npm run dev:mobile
 npm run seed --workspace=apps/api
-
 npm run dev:mobile
+
+
+
+👑 Admin Control Portal: नम्बर 9800000000 (क्लिक गर्दा स्वतः लगइन भई सिधै /admin मा लैजान्छ)।
+🛠️ Service Provider Partner: नम्बर 9841000000 (क्लिक गर्दा सिधै /provider/dashboard मा लैजान्छ)।
+👤 Customer / Client: नम्बर 9841122334 (सामान्य ग्राहक खाता)।
+
+म्यानुअल रूपमा लगइन गर्न:
+
+मोबाइल नम्बर: 9800000000 वा 9800000001
+OTP: 123456 (स्क्रिनमा स्वतः Dev OTP पनि देखिन्छ)
+ब्याकइन्डले यो नम्बरलाई स्वतः superadmin अधिकार दिएर /admin कन्ट्रोल सेन्टरमा पुर्‍याउँछ।
+

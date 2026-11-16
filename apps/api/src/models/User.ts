@@ -6,6 +6,7 @@ export interface IUserDocument extends Document {
   isPhoneVerified: boolean;
   name: string;
   email?: string;
+  googleId?: string;
   avatarUrl?: string;
   role: UserRole;
   status: UserStatus;
@@ -18,7 +19,8 @@ const userSchema = new Schema<IUserDocument>(
   {
     phoneNumber: {
       type: String,
-      required: true,
+      required: false,
+      sparse: true,
       unique: true,
       trim: true,
       index: true,
@@ -36,6 +38,13 @@ const userSchema = new Schema<IUserDocument>(
       type: String,
       trim: true,
       lowercase: true,
+      sparse: true,
+      index: true,
+    },
+    googleId: {
+      type: String,
+      sparse: true,
+      index: true,
     },
     avatarUrl: {
       type: String,

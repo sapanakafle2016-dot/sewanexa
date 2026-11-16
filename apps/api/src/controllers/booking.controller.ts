@@ -170,6 +170,17 @@ export class BookingController {
       booking.providerId = provider._id;
     }
 
+    // When accepted, initialize provider live location from profile or default nearby position
+    if (status === 'accepted' && !booking.providerLiveLocation?.coordinates?.length) {
+      const initCoords = provider?.location?.coordinates || [85.3480, 27.6780];
+      booking.providerLiveLocation = {
+        type: 'Point',
+        coordinates: initCoords as [number, number],
+        heading: 0,
+        updatedAt: new Date(),
+      };
+    }
+
     booking.status = status;
     if (totalAmount && typeof totalAmount === 'number') {
       booking.payment.totalAmount = totalAmount;
@@ -269,6 +280,176 @@ export class BookingController {
       success: true,
       message: 'Thank you for your rating and review!',
       review,
+    });
+  }
+
+  /**
+   * Get real-time location tracking for an active booking
+   * Shows client location and live provider location with distance & ETA
+   */
+  static async getTracking(req: AuthRequest, res: Response): Promise<void> {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
+    const { id } = req.params;
+    const booking = await Booking.findById(id)
+      .populate('customerId', 'name phoneNumber avatarUrl')
+      .populate({
+        path: 'providerId',
+        populate: { path: 'userId', select: 'name phoneNumber avatarUrl' },
+      })
+      .populate('subCategoryId', 'name slug icon');
+
+    if (!booking) {
+      res.status(404).json({ success: false, message: 'Booking not found' });
+      return;
+    }
+
+    // Default fallback coordinates if needed (Lokanthali / Koteshwor)
+    const clientCoords: [number, number] = (booking.jobLocation?.coordinates as [number, number]) || [
+      85.3587,
+      27.671,
+    ];
+
+    const providerObj: any = booking.providerId;
+    let providerCoords: [number, number] = (booking.providerLiveLocation?.coordinates as [
+      number,
+      number,
+    ]) ||
+      (providerObj?.location?.coordinates as [number, number]) || [85.348, 27.678];
+
+    // Haversine calculation: lon1, lat1, lon2, lat2
+    const R = 6371; // Earth's radius in km
+    const dLat = ((clientCoords[1] - providerCoords[1]) * Math.PI) / 180;
+    const dLon = ((clientCoords[0] - providerCoords[0]) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((providerCoords[1] * Math.PI) / 180) *
+        Math.cos((clientCoords[1] * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distanceKm = Math.round(R * c * 100) / 100;
+    const etaMinutes = Math.max(1, Math.ceil((distanceKm / 20) * 60));
+
+    res.json({
+      success: true,
+      tracking: {
+        bookingId: booking._id,
+        bookingCode: booking.bookingCode,
+        status: booking.status,
+        serviceName: (booking.subCategoryId as any)?.name || 'Local Service',
+        client: {
+          id: (booking.customerId as any)?._id,
+          name: (booking.customerId as any)?.name || 'Client',
+          phoneNumber: (booking.customerId as any)?.phoneNumber || '98XXXXXXXX',
+          address: booking.address,
+          coordinates: {
+            longitude: clientCoords[0],
+            latitude: clientCoords[1],
+          },
+        },
+        provider: providerObj
+          ? {
+              id: providerObj._id,
+              name: providerObj.userId?.name || providerObj.businessName || 'Service Provider',
+              businessName: providerObj.businessName,
+              phoneNumber: providerObj.userId?.phoneNumber || '98XXXXXXXX',
+              rating: providerObj.ratings?.average || 4.9,
+              totalJobs: providerObj.ratings?.count || 24,
+              coordinates: {
+                longitude: providerCoords[0],
+                latitude: providerCoords[1],
+              },
+              heading: booking.providerLiveLocation?.heading || 0,
+              lastUpdated: booking.providerLiveLocation?.updatedAt || new Date(),
+            }
+          : null,
+        telemetry: {
+          distanceKm,
+          etaMinutes,
+          speedKmh: booking.status === 'en_route' ? 24 : 0,
+        },
+        timeline: booking.timeline,
+      },
+    });
+  }
+
+  /**
+   * Update live location of provider for a booking (called by mobile app GPS)
+   */
+  static async updateProviderLocation(req: AuthRequest, res: Response): Promise<void> {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
+    const { id } = req.params;
+    const { longitude, latitude, heading = 0 } = req.body;
+
+    if (typeof longitude !== 'number' || typeof latitude !== 'number') {
+      res.status(400).json({ success: false, message: 'Valid longitude and latitude are required' });
+      return;
+    }
+
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      res.status(404).json({ success: false, message: 'Booking not found' });
+      return;
+    }
+
+    booking.providerLiveLocation = {
+      type: 'Point',
+      coordinates: [longitude, latitude],
+      heading,
+      updatedAt: new Date(),
+    };
+
+    await booking.save();
+
+    // Calculate distance & ETA
+    const clientCoords = booking.jobLocation.coordinates;
+    const R = 6371;
+    const dLat = ((clientCoords[1] - latitude) * Math.PI) / 180;
+    const dLon = ((clientCoords[0] - longitude) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((latitude * Math.PI) / 180) *
+        Math.cos((clientCoords[1] * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distanceKm = Math.round(R * c * 100) / 100;
+    const etaMinutes = Math.max(1, Math.ceil((distanceKm / 20) * 60));
+
+    // Broadcast live event via Socket.IO
+    try {
+      const io = getSocketIO();
+      if (io) {
+        io.to(`booking:${booking._id}`).emit(SocketEvents.PROVIDER_LOCATION_UPDATE, {
+          bookingId: booking._id,
+          longitude,
+          latitude,
+          heading,
+          distanceKm,
+          etaMinutes,
+          updatedAt: new Date(),
+        });
+      }
+    } catch (err) {
+      // non-blocking socket
+    }
+
+    res.json({
+      success: true,
+      message: 'Provider location updated',
+      telemetry: {
+        distanceKm,
+        etaMinutes,
+        coordinates: [longitude, latitude],
+      },
     });
   }
 }

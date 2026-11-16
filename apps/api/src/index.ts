@@ -16,7 +16,25 @@ const httpServer = http.createServer(app);
 app.use(helmet());
 app.use(
   cors({
-    origin: [config.clientUrl, 'http://localhost:3000', 'http://localhost:5173', 'http://localhost:19006'],
+    origin: (origin, callback) => {
+      // In development or if mobile native client (no origin header), allow request
+      if (!origin || config.nodeEnv === 'development') {
+        callback(null, true);
+        return;
+      }
+      const allowedOrigins = [
+        config.clientUrl,
+        'http://localhost:3000',
+        'http://localhost:8081',
+        'http://localhost:5173',
+        'http://localhost:19006',
+      ];
+      if (allowedOrigins.includes(origin) || origin.startsWith('http://localhost:') || origin.startsWith('http://192.168.')) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
     credentials: true,
   })
 );
@@ -43,15 +61,18 @@ app.use('/api', apiRouter);
 // Error handling middleware
 app.use(errorHandler);
 
-// Initialize Socket.IO
-initSocketIO(httpServer, config.clientUrl);
+// Initialize Socket.IO (when running in standalone server mode)
+if (!process.env.VERCEL) {
+  initSocketIO(httpServer, config.clientUrl);
+}
 
 // Start server
 const startServer = async () => {
   await connectDB();
 
-  httpServer.listen(config.port, () => {
-    console.log(`
+  if (!process.env.VERCEL) {
+    httpServer.listen(config.port, () => {
+      console.log(`
 =============================================================
 🚀 SEWANEXA API Server is running on port ${config.port}
 📍 Environment: ${config.nodeEnv}
@@ -59,11 +80,13 @@ const startServer = async () => {
 🔗 Client URL: ${config.clientUrl}
 💳 Payment Gateways: eSewa v2 & Khalti v2 Active
 =============================================================
-    `);
-  });
+      `);
+    });
+  }
 };
 
 startServer();
 
+export default app;
 export { app, httpServer };
 

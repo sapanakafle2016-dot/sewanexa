@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   Alert,
   SafeAreaView,
+  Linking,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -92,8 +94,8 @@ export const ProviderDashboardScreen = ({ navigation }: any) => {
           style={styles.switchModeBtn}
           onPress={() => switchMode('customer')}
         >
-          <Ionicons name="swap-horizontal" size={16} color="#1e6fe8" />
-          <Text style={styles.switchModeText}>Customer Mode</Text>
+          <Ionicons name="swap-horizontal" size={16} color="#331E6A" />
+          <Text style={[styles.switchModeText, { color: '#331E6A' }]}>Customer Mode</Text>
         </TouchableOpacity>
       </View>
 
@@ -192,6 +194,70 @@ export const ProviderDashboardScreen = ({ navigation }: any) => {
                 <Ionicons name="person" size={14} color="#64748b" />
                 <Text style={styles.jobCustomer}>{job.customerId?.name || 'Customer'}</Text>
               </View>
+
+              {/* ── Client Live Location & Navigation HUD for Provider ── */}
+              {(job.status === 'accepted' ||
+                job.status === 'en_route' ||
+                job.status === 'in_progress') && (
+                <View style={styles.clientTrackingHud}>
+                  <View style={styles.clientTrackingHeader}>
+                    <View style={styles.liveNavPill}>
+                      <View style={styles.liveNavDot} />
+                      <Text style={styles.liveNavText}>
+                        {job.status === 'accepted'
+                          ? 'स्वीकृत • यात्रा सुरु गर्नुहोस्'
+                          : job.status === 'en_route'
+                          ? 'बाटोमा • प्रत्यक्ष नेभिगेसन'
+                          : 'स्थानमा पुग्नुभयो • कार्य सुरु'}
+                      </Text>
+                    </View>
+                    <Text style={styles.clientEtaText}>दूरी: ~१.८ कि.मि. (७ मि.)</Text>
+                  </View>
+
+                  <View style={styles.clientLocRow}>
+                    <Ionicons name="location" size={18} color="#E52E2E" />
+                    <View style={{ flex: 1, marginLeft: 8 }}>
+                      <Text style={styles.clientLocTitle}>ग्राहकको ठेगाना (Customer Destination):</Text>
+                      <Text style={styles.clientLocVal}>
+                        {job.address?.formattedAddress ||
+                          `${job.address?.areaName || 'Lokanthali'}, ${
+                            job.address?.city || 'Bhaktapur'
+                          }`}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.clientActionRow}>
+                    <TouchableOpacity
+                      style={styles.openNavBtn}
+                      onPress={() => {
+                        const lat = job.jobLocation?.coordinates?.[1] || 27.671;
+                        const lng = job.jobLocation?.coordinates?.[0] || 85.3587;
+                        const url = Platform.select({
+                          ios: `maps:0,0?q=${lat},${lng}`,
+                          android: `geo:0,0?q=${lat},${lng}`,
+                          default: `https://maps.google.com/?q=${lat},${lng}`,
+                        });
+                        Linking.openURL(url as string);
+                      }}
+                    >
+                      <Ionicons name="navigate-circle" size={18} color="#FFFFFF" />
+                      <Text style={styles.openNavBtnText}>Google Maps नेभिगेसन</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.callClientBtn}
+                      onPress={() => {
+                        const phone = job.customerId?.phoneNumber || '9841122334';
+                        Linking.openURL(`tel:${phone}`);
+                      }}
+                    >
+                      <Ionicons name="call" size={16} color="#16A34A" />
+                      <Text style={styles.callClientBtnText}>कल</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
 
               {/* Action Buttons depending on job status */}
               {job.status === 'requested' && (
@@ -498,7 +564,7 @@ const styles = StyleSheet.create({
     flex: 2,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: '#1e6fe8',
+    backgroundColor: '#16A34A',
     alignItems: 'center',
   },
   acceptBtnText: {
@@ -511,7 +577,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1e6fe8',
+    backgroundColor: '#331E6A',
     paddingVertical: 12,
     borderRadius: 12,
     gap: 8,
@@ -520,6 +586,96 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  clientTrackingHud: {
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1.5,
+    borderColor: '#bbf7d0',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 12,
+  },
+  clientTrackingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  liveNavPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    gap: 5,
+  },
+  liveNavDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#16a34a',
+  },
+  liveNavText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#15803d',
+  },
+  clientEtaText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#166534',
+  },
+  clientLocRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  clientLocTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748b',
+    textTransform: 'uppercase',
+  },
+  clientLocVal: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginTop: 1,
+  },
+  clientActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  openNavBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1d4ed8',
+    paddingVertical: 9,
+    borderRadius: 12,
+    gap: 6,
+  },
+  openNavBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  callClientBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    gap: 4,
+  },
+  callClientBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#16a34a',
   },
 });
 

@@ -246,14 +246,16 @@ export interface IKhaltiInitiatePayload {
 }
 
 // Socket Events
-export enum SocketEvents {
-  JOIN_ROOM = 'join_room',
-  LEAVE_ROOM = 'leave_room',
-  PROVIDER_LOCATION_UPDATE = 'provider_location_update',
-  PROVIDER_STATUS_TOGGLE = 'provider_status_toggle',
-  NEW_JOB_BROADCAST = 'new_job_broadcast',
-  JOB_ACCEPTED = 'job_accepted',
-  JOB_STATUS_CHANGE = 'job_status_change',
-  NOTIFICATION = 'notification',
-}
+export const SocketEvents = {
+  JOIN_ROOM: 'join_room',
+  LEAVE_ROOM: 'leave_room',
+  PROVIDER_LOCATION_UPDATE: 'provider_location_update',
+  PROVIDER_STATUS_TOGGLE: 'provider_status_toggle',
+  NEW_JOB_BROADCAST: 'new_job_broadcast',
+  JOB_ACCEPTED: 'job_accepted',
+  JOB_STATUS_CHANGE: 'job_status_change',
+  NOTIFICATION: 'notification',
+} as const;
+
+export type SocketEvents = (typeof SocketEvents)[keyof typeof SocketEvents];
 

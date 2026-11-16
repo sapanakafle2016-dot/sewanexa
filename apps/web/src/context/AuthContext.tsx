@@ -11,6 +11,7 @@ interface AuthContextType {
   isLoading: boolean;
   sendOtp: (phoneNumber: string) => Promise<{ success: boolean; devOtp?: string; message: string }>;
   verifyOtp: (phoneNumber: string, otp: string) => Promise<void>;
+  loginWithGoogle: (payload: { email?: string; name?: string; avatarUrl?: string; googleId?: string; idToken?: string }) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -79,6 +80,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithGoogle = async (payload: { email?: string; name?: string; avatarUrl?: string; googleId?: string; idToken?: string }) => {
+    const res = await apiFetch('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      requiresAuth: false,
+    });
+
+    if (res.token) {
+      setAuthToken(res.token);
+      setUser(res.user);
+      setIsProvider(res.isProvider);
+      setProviderProfile(res.providerProfile);
+    }
+  };
+
   const logout = () => {
     clearAuthToken();
     setUser(null);
@@ -95,6 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         sendOtp,
         verifyOtp,
+        loginWithGoogle,
         logout,
         refreshUser,
       }}

@@ -12,7 +12,16 @@ export const phoneAuthSchema = z.object({
 
 export const verifyOtpSchema = z.object({
   phoneNumber: z.string().trim().regex(nepalPhoneRegex, 'Invalid Nepali mobile number'),
-  otp: z.string().length(6, 'OTP must be 6 digits').regex(/^\d+$/, 'OTP must be numeric'),
+  otp: z.string().length(6, 'OTP must be 6 digits').regex(/^\d+$/, 'OTP must be numeric').optional(),
+  firebaseIdToken: z.string().optional(),
+});
+
+export const googleAuthSchema = z.object({
+  email: z.string().email('Valid Gmail address is required').optional(),
+  name: z.string().optional(),
+  avatarUrl: z.string().url().optional(),
+  googleId: z.string().optional(),
+  idToken: z.string().optional(),
 });
 
 export const updateProfileSchema = z.object({
@@ -76,17 +85,23 @@ export const createBookingSchema = z.object({
   estimatedAmount: z.number().nonnegative().optional(),
 });
 
-export const nearbySearchQuerySchema = z.object({
-  longitude: z.coerce.number().min(80).max(89),
-  latitude: z.coerce.number().min(26).max(31),
-  radiusKm: z.coerce.number().min(0.5).max(50).default(5),
-  categoryId: z.string().optional(),
-  subCategoryId: z.string().optional(),
-  searchQuery: z.string().optional(),
-  minRating: z.coerce.number().min(1).max(5).optional(),
-  maxPrice: z.coerce.number().positive().optional(),
-  sortBy: z.enum(['distance', 'rating', 'price']).default('distance'),
-});
+export const nearbySearchQuerySchema = z
+  .object({
+    longitude: z.coerce.number().min(80).max(89),
+    latitude: z.coerce.number().min(26).max(31),
+    radiusKm: z.coerce.number().min(0.5).max(50).default(5),
+    categoryId: z.string().optional(),
+    subCategoryId: z.string().optional(),
+    searchQuery: z.string().optional(),
+    q: z.string().optional(),
+    minRating: z.coerce.number().min(1).max(5).optional(),
+    maxPrice: z.coerce.number().positive().optional(),
+    sortBy: z.enum(['distance', 'rating', 'price']).default('distance'),
+  })
+  .transform((data) => ({
+    ...data,
+    searchQuery: data.searchQuery || data.q,
+  }));
 
 export const createReviewSchema = z.object({
   bookingId: z.string().min(1),

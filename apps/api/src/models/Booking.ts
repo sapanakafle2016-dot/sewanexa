@@ -36,6 +36,12 @@ export interface IBookingDocument extends Document {
     note?: string;
     updatedBy?: Types.ObjectId;
   }>;
+  providerLiveLocation?: {
+    type: 'Point';
+    coordinates: [number, number]; // [longitude, latitude]
+    heading?: number;
+    updatedAt?: Date;
+  };
   cancellationReason?: string;
   cancelledBy?: Types.ObjectId;
   createdAt: Date;
@@ -154,6 +160,19 @@ const bookingSchema = new Schema<IBookingDocument>(
         updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
       },
     ],
+    providerLiveLocation: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point',
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        default: [85.3480, 27.6780],
+      },
+      heading: { type: Number, default: 0 },
+      updatedAt: { type: Date, default: Date.now },
+    },
     cancellationReason: String,
     cancelledBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },
