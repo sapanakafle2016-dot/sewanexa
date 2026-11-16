@@ -12,6 +12,7 @@ out/
 
 # Production builds
 dist/
+!packages/*/dist/
 build/
 
 # Misc
