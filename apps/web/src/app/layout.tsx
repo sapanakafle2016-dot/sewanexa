@@ -25,8 +25,6 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Mukta:wght@300;400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
-        {/* Google Identity Services (GIS) for Google OAuth One Tap & Button */}
-        <script src="https://accounts.google.com/gsi/client" async defer />
       </head>
       <body className="flex flex-col min-h-screen font-sans">
         <LanguageProvider>

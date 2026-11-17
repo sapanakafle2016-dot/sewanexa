@@ -2,11 +2,11 @@ import mongoose, { Schema, Document } from 'mongoose';
 import { UserRole, UserStatus } from '@sewanexa/shared-types';
 
 export interface IUserDocument extends Document {
-  phoneNumber: string;
+  phoneNumber?: string;
   isPhoneVerified: boolean;
   name: string;
   email?: string;
-  googleId?: string;
+  password?: string;
   avatarUrl?: string;
   role: UserRole;
   status: UserStatus;
@@ -41,10 +41,9 @@ const userSchema = new Schema<IUserDocument>(
       sparse: true,
       index: true,
     },
-    googleId: {
+    password: {
       type: String,
-      sparse: true,
-      index: true,
+      select: false, // Don't return password hash by default
     },
     avatarUrl: {
       type: String,

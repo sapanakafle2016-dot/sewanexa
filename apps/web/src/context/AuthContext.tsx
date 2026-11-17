@@ -9,9 +9,16 @@ interface AuthContextType {
   providerProfile: IProviderProfile | null;
   isProvider: boolean;
   isLoading: boolean;
+  loginWithPassword: (email: string, password: string) => Promise<void>;
+  signupWithPassword: (payload: {
+    name: string;
+    email: string;
+    password: string;
+    phoneNumber?: string;
+    role?: 'customer' | 'provider';
+  }) => Promise<void>;
   sendOtp: (phoneNumber: string) => Promise<{ success: boolean; devOtp?: string; message: string }>;
   verifyOtp: (phoneNumber: string, otp: string) => Promise<void>;
-  loginWithGoogle: (payload: { email?: string; name?: string; avatarUrl?: string; googleId?: string; idToken?: string }) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -80,8 +87,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithGoogle = async (payload: { email?: string; name?: string; avatarUrl?: string; googleId?: string; idToken?: string }) => {
-    const res = await apiFetch('/auth/google', {
+  const loginWithPassword = async (email: string, password: string) => {
+    const res = await apiFetch('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+      requiresAuth: false,
+    });
+
+    if (res.token) {
+      setAuthToken(res.token);
+      setUser(res.user);
+      setIsProvider(res.isProvider);
+      setProviderProfile(res.providerProfile);
+    }
+  };
+
+  const signupWithPassword = async (payload: {
+    name: string;
+    email: string;
+    password: string;
+    phoneNumber?: string;
+    role?: 'customer' | 'provider';
+  }) => {
+    const res = await apiFetch('/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload),
       requiresAuth: false,
@@ -109,9 +137,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         providerProfile,
         isProvider,
         isLoading,
+        loginWithPassword,
+        signupWithPassword,
         sendOtp,
         verifyOtp,
-        loginWithGoogle,
         logout,
         refreshUser,
       }}

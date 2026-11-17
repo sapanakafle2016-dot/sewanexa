@@ -13,9 +13,16 @@ export interface MobileAuthContextType {
   isProvider: boolean;
   activeMode: 'customer' | 'provider';
   isLoading: boolean;
+  loginWithPassword: (email: string, password: string) => Promise<void>;
+  signupWithPassword: (payload: {
+    name: string;
+    email: string;
+    password: string;
+    phoneNumber?: string;
+    role?: 'customer' | 'provider';
+  }) => Promise<void>;
   sendOtp: (phoneNumber: string) => Promise<{ success: boolean; devOtp?: string; message: string }>;
   verifyOtp: (phoneNumber: string, otp: string) => Promise<void>;
-  loginWithGoogle: (payload: { email?: string; name?: string; avatarUrl?: string; googleId?: string; idToken?: string }) => Promise<void>;
   switchMode: (mode: 'customer' | 'provider') => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -66,7 +73,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsProvider(false);
       }
     } catch (err) {
-      // Graceful offline/guest fallback - never throw unhandled promise rejection
       console.warn('User session check skipped (offline / guest mode):', err);
       try {
         await removeStoredToken();
@@ -98,6 +104,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  const loginWithPassword = async (email: string, password: string) => {
+    const res = await mobileApiFetch('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+      requiresAuth: false,
+    });
+
+    if (res && res.token) {
+      try {
+        await setStoredToken(res.token);
+      } catch {}
+      setUser(res.user || null);
+      setIsProvider(Boolean(res.isProvider));
+      setProviderProfile(res.providerProfile || null);
+      setActiveMode(res.isProvider ? 'provider' : 'customer');
+    }
+  };
+
+  const signupWithPassword = async (payload: {
+    name: string;
+    email: string;
+    password: string;
+    phoneNumber?: string;
+    role?: 'customer' | 'provider';
+  }) => {
+    const res = await mobileApiFetch('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      requiresAuth: false,
+    });
+
+    if (res && res.token) {
+      try {
+        await setStoredToken(res.token);
+      } catch {}
+      setUser(res.user || null);
+      setIsProvider(Boolean(res.isProvider));
+      setProviderProfile(res.providerProfile || null);
+      setActiveMode(res.isProvider ? 'provider' : 'customer');
+    }
+  };
+
   const sendOtp = async (phoneNumber: string) => {
     return await mobileApiFetch('/auth/send-otp', {
       method: 'POST',
@@ -124,24 +172,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithGoogle = async (payload: { email?: string; name?: string; avatarUrl?: string; googleId?: string; idToken?: string }) => {
-    const res = await mobileApiFetch('/auth/google', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      requiresAuth: false,
-    });
-
-    if (res && res.token) {
-      try {
-        await setStoredToken(res.token);
-      } catch {}
-      setUser(res.user || null);
-      setIsProvider(Boolean(res.isProvider));
-      setProviderProfile(res.providerProfile || null);
-      setActiveMode(res.isProvider ? 'provider' : 'customer');
-    }
-  };
-
   const switchMode = (mode: 'customer' | 'provider') => {
     setActiveMode(mode);
   };
@@ -149,9 +179,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await removeStoredToken();
-    } catch {
-      // Ignore storage clear errors on logout
-    }
+    } catch {}
     setUser(null);
     setProviderProfile(null);
     setIsProvider(false);
@@ -166,9 +194,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isProvider,
         activeMode,
         isLoading,
+        loginWithPassword,
+        signupWithPassword,
         sendOtp,
         verifyOtp,
-        loginWithGoogle,
         switchMode,
         logout,
         refreshUser,

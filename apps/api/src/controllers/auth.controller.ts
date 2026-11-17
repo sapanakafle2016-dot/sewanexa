@@ -1,13 +1,161 @@
 import { Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { phoneAuthSchema, verifyOtpSchema, updateProfileSchema, googleAuthSchema } from '@sewanexa/validation';
+import {
+  loginSchema,
+  signupSchema,
+  phoneAuthSchema,
+  verifyOtpSchema,
+  updateProfileSchema,
+} from '@sewanexa/validation';
 import { User } from '../models/User.js';
 import { ProviderProfile } from '../models/ProviderProfile.js';
 import { OtpService } from '../services/otp.service.js';
 import { config } from '../config/env.js';
 import { AuthRequest } from '../middlewares/auth.js';
+import { PasswordUtil } from '../utils/password.js';
 
 export class AuthController {
+  /**
+   * Register a new user with Email and Password
+   */
+  static async register(req: AuthRequest, res: Response): Promise<void> {
+    const validated = signupSchema.parse(req.body);
+    const email = validated.email.toLowerCase().trim();
+
+    // Check if user already exists with this email
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      res.status(400).json({
+        success: false,
+        message: 'An account with this email address already exists. Please log in.',
+      });
+      return;
+    }
+
+    // If phone number provided, normalize and check uniqueness
+    let normalizedPhone: string | undefined;
+    if (validated.phoneNumber && validated.phoneNumber.trim()) {
+      normalizedPhone = validated.phoneNumber.replace(/^(\+?977[- ]?)/, '').trim();
+      const existingPhone = await User.findOne({ phoneNumber: normalizedPhone });
+      if (existingPhone) {
+        res.status(400).json({
+          success: false,
+          message: 'An account with this phone number already exists.',
+        });
+        return;
+      }
+    }
+
+    const hashedPassword = PasswordUtil.hashPassword(validated.password);
+
+    const isAdminEmail =
+      email === 'admin@sewanexa.com' ||
+      email === 'superadmin@sewanexa.com' ||
+      email === 'sajankafle@gmail.com';
+
+    const role = isAdminEmail ? 'superadmin' : validated.role || 'customer';
+
+    const user = await User.create({
+      name: validated.name.trim(),
+      email,
+      password: hashedPassword,
+      ...(normalizedPhone ? { phoneNumber: normalizedPhone } : {}),
+      role,
+      status: 'active',
+      isPhoneVerified: false,
+    });
+
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn as any }
+    );
+
+    // If registered as provider, create empty provider profile shell
+    let providerProfile = null;
+    if (role === 'provider') {
+      providerProfile = await ProviderProfile.create({
+        userId: user._id,
+        bio: 'New service provider on Sewanexa',
+        categories: [],
+        subCategories: [],
+        skills: [],
+        experienceYears: 0,
+        location: {
+          type: 'Point',
+          coordinates: [85.324, 27.7172], // Default Kathmandu coordinates
+        },
+        address: {
+          city: 'Kathmandu',
+          areaName: 'Kathmandu Valley',
+          formattedAddress: 'Kathmandu, Nepal',
+        },
+        pricingModel: 'fixed',
+        verificationStatus: 'unsubmitted',
+        isOnline: true,
+      });
+    }
+
+    const sanitizedUser = user.toObject();
+    delete (sanitizedUser as any).password;
+
+    res.status(201).json({
+      success: true,
+      message: 'Account created successfully! Welcome to Sewanexa.',
+      token,
+      user: sanitizedUser,
+      isProvider: !!providerProfile,
+      providerProfile,
+    });
+  }
+
+  /**
+   * Log in with Email and Password
+   */
+  static async login(req: AuthRequest, res: Response): Promise<void> {
+    const validated = loginSchema.parse(req.body);
+    const email = validated.email.toLowerCase().trim();
+
+    // Query user including password field
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      res.status(401).json({
+        success: false,
+        message: 'Invalid email or password. Please check and try again.',
+      });
+      return;
+    }
+
+    // Verify password
+    const isPasswordValid = PasswordUtil.verifyPassword(validated.password, user.password);
+    if (!isPasswordValid) {
+      res.status(401).json({
+        success: false,
+        message: 'Invalid email or password. Please check and try again.',
+      });
+      return;
+    }
+
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn as any }
+    );
+
+    const providerProfile = await ProviderProfile.findOne({ userId: user._id });
+
+    const sanitizedUser = user.toObject();
+    delete (sanitizedUser as any).password;
+
+    res.json({
+      success: true,
+      message: 'Logged in successfully!',
+      token,
+      user: sanitizedUser,
+      isProvider: !!providerProfile,
+      providerProfile,
+    });
+  }
   /**
    * Request OTP for Nepal mobile number
    */
@@ -107,100 +255,6 @@ export class AuthController {
     res.json({
       success: true,
       message: isNewUser ? 'Account created successfully' : 'Logged in successfully',
-      token,
-      user,
-      isProvider: !!providerProfile,
-      providerProfile,
-    });
-  }
-
-  /**
-   * Google / Gmail Social Login (Supports Google Identity Services credential idToken & OAuth info)
-   */
-  static async googleLogin(req: AuthRequest, res: Response): Promise<void> {
-    const validated = googleAuthSchema.parse(req.body);
-    let email = validated.email?.toLowerCase().trim();
-    let name = validated.name?.trim();
-    let avatarUrl = validated.avatarUrl;
-    let googleId = validated.googleId;
-
-    // If an idToken (Google JWT) is provided from Google Identity Services (GIS) on web/mobile:
-    if (validated.idToken) {
-      try {
-        const parts = validated.idToken.split('.');
-        if (parts.length === 3) {
-          const payloadJson = Buffer.from(parts[1], 'base64').toString('utf-8');
-          const payload = JSON.parse(payloadJson);
-          if (payload.email) {
-            email = payload.email.toLowerCase().trim();
-          }
-          if (payload.name && !name) {
-            name = payload.name;
-          }
-          if (payload.picture && !avatarUrl) {
-            avatarUrl = payload.picture;
-          }
-          if (payload.sub && !googleId) {
-            googleId = payload.sub;
-          }
-        }
-      } catch (tokenParseErr) {
-        console.warn('[Google Auth] Failed to parse idToken payload:', tokenParseErr);
-      }
-    }
-
-    if (!email) {
-      res.status(400).json({ success: false, message: 'Valid Gmail/Google email is required' });
-      return;
-    }
-
-    if (!name) {
-      name = email.split('@')[0];
-    }
-
-    // Check if user exists with this email or googleId
-    let user = await User.findOne({
-      $or: [{ email }, ...(googleId ? [{ googleId }] : [])],
-    });
-
-    let isNewUser = false;
-    const isAdminEmail =
-      email === 'admin@sewanexa.com' ||
-      email === 'superadmin@sewanexa.com' ||
-      email === 'sajankafle@gmail.com';
-
-    if (!user) {
-      isNewUser = true;
-      user = await User.create({
-        email,
-        name,
-        avatarUrl,
-        googleId,
-        isPhoneVerified: false,
-        role: isAdminEmail ? 'superadmin' : 'customer',
-      });
-    } else {
-      if (!user.email) user.email = email;
-      if (googleId && !user.googleId) user.googleId = googleId;
-      if (avatarUrl && !user.avatarUrl) user.avatarUrl = avatarUrl;
-      if (name && !user.name) user.name = name;
-      if (isAdminEmail && user.role !== 'admin' && user.role !== 'superadmin') {
-        user.role = 'superadmin';
-      }
-      await user.save();
-    }
-
-    const token = jwt.sign(
-      { userId: user._id, role: user.role },
-      config.jwt.secret,
-      { expiresIn: config.jwt.expiresIn as any }
-    );
-
-    const providerProfile = await ProviderProfile.findOne({ userId: user._id });
-
-    res.json({
-      success: true,
-      message: isNewUser ? 'Welcome to Sewanexa! Registered with Gmail.' : 'Logged in successfully with Gmail.',
       token,
       user,
       isProvider: !!providerProfile,

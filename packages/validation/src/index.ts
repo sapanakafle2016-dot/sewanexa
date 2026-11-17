@@ -3,6 +3,19 @@ import { z } from 'zod';
 // Nepal phone number validation: 98XXXXXXXX, 97XXXXXXXX, or with +977 / 977 prefix
 export const nepalPhoneRegex = /^(?:\+?977[- ]?)?(9[78]\d{8})$/;
 
+export const loginSchema = z.object({
+  email: z.string().trim().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
+export const signupSchema = z.object({
+  name: z.string().trim().min(2, 'Full name must be at least 2 characters').max(80),
+  email: z.string().trim().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  phoneNumber: z.string().trim().regex(nepalPhoneRegex, 'Please enter a valid Nepali mobile number').optional().or(z.literal('')),
+  role: z.enum(['customer', 'provider']).default('customer'),
+});
+
 export const phoneAuthSchema = z.object({
   phoneNumber: z
     .string()
@@ -14,14 +27,6 @@ export const verifyOtpSchema = z.object({
   phoneNumber: z.string().trim().regex(nepalPhoneRegex, 'Invalid Nepali mobile number'),
   otp: z.string().length(6, 'OTP must be 6 digits').regex(/^\d+$/, 'OTP must be numeric').optional(),
   firebaseIdToken: z.string().optional(),
-});
-
-export const googleAuthSchema = z.object({
-  email: z.string().email('Valid Gmail address is required').optional(),
-  name: z.string().optional(),
-  avatarUrl: z.string().url().optional(),
-  googleId: z.string().optional(),
-  idToken: z.string().optional(),
 });
 
 export const updateProfileSchema = z.object({
